@@ -170,8 +170,10 @@
             <div class="mt-4 flex justify-center gap-4 border-t border-slate-800 pt-3 text-[11px] text-slate-500"><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"></i>低於 40%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"></i>40–70%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400"></i>高於 70%</span></div>
           </article>
           <article class="panel p-5">
-            <div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">騰落指標（漲跌家數累積）</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">上漲家數減下跌家數的累積走勢；若指數創高但騰落線轉弱，可能代表市場廣度收斂。</span></span></div>
-            <div class="flex min-h-[174px] flex-col items-center justify-center gap-3 rounded-md border border-dashed border-slate-700 text-center"><p class="text-sm text-slate-400">目前無可用的漲跌家數歷史資料</p><a class="text-xs text-sky-300 hover:text-sky-200" href="https://www.tradingview.com/symbols/SPX/market-breadth/" target="_blank" rel="noopener noreferrer">在 TradingView 查看市場廣度 ↗</a></div>
+            <div class="mb-3 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">騰落指標（漲跌家數累積）</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/symbols/SPX/market-breadth/" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看市場廣度">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">上漲家數減下跌家數的累積走勢；若指數創高但騰落線轉弱，可能代表市場廣度收斂。</span></span></div></div>
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2"><p id="advance-decline-summary" class="text-sm font-medium text-slate-100">近 10 日多方佔優（-- 勝 -- 負）</p><span class="rounded-full border border-amber-400/30 bg-amber-400/5 px-2 py-1 text-[10px] text-amber-300">Mock Data</span></div>
+            <p class="mb-2 text-[10px] text-slate-500">近 10 個交易日｜Mock 展示資料</p>
+            <div class="market-table-wrap"><table class="market-table"><thead><tr><th>日期</th><th>上漲家數</th><th>下跌家數</th><th>淨差值 (Net)</th></tr></thead><tbody id="advance-decline-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
           </article>
         </div>
       </section>
@@ -239,6 +241,35 @@
       spx: { container: "spx-chart", value: "spx-value", daily: "spx-daily", change30: "spx-30d", decimals: 2 },
       ndx: { container: "ndx-chart", value: "ndx-value", daily: "ndx-daily", change30: "ndx-30d", decimals: 2 }
     };
+
+    const ADVANCE_DECLINE_MOCK_DATA = [
+      { date: "2026-10-19", advancing: 341, declining: 159 },
+      { date: "2026-10-20", advancing: 288, declining: 212 },
+      { date: "2026-10-21", advancing: 214, declining: 286 },
+      { date: "2026-10-22", advancing: 359, declining: 141 },
+      { date: "2026-10-23", advancing: 301, declining: 199 },
+      { date: "2026-10-26", advancing: 325, declining: 175 },
+      { date: "2026-10-27", advancing: 247, declining: 253 },
+      { date: "2026-10-28", advancing: 372, declining: 128 },
+      { date: "2026-10-29", advancing: 293, declining: 207 },
+      { date: "2026-10-30", advancing: 181, declining: 319 }
+    ];
+
+    function renderAdvanceDecline() {
+      const wins = ADVANCE_DECLINE_MOCK_DATA.filter((day) => day.advancing > day.declining).length;
+      const losses = ADVANCE_DECLINE_MOCK_DATA.filter((day) => day.advancing < day.declining).length;
+      const summary = wins > losses
+        ? `近 10 日多方佔優（${wins} 勝 ${losses} 負）`
+        : losses > wins
+          ? `近 10 日空方佔優（${wins} 勝 ${losses} 負）`
+          : `近 10 日多空相當（${wins} 勝 ${losses} 負）`;
+      setText("advance-decline-summary", summary);
+      byId("advance-decline-history").innerHTML = [...ADVANCE_DECLINE_MOCK_DATA].reverse().map((day) => {
+        const net = day.advancing - day.declining;
+        const tone = net > 0 ? "text-emerald-400" : net < 0 ? "text-red-500" : "text-slate-400";
+        return `<tr><td>${day.date}</td><td class="number">${numberFormat.format(day.advancing)}</td><td class="number">${numberFormat.format(day.declining)}</td><td class="number ${tone}">${net > 0 ? "+" : ""}${numberFormat.format(net)}</td></tr>`;
+      }).join("");
+    }
 
     const MOCK_HISTORY_FIXTURES = {
       dxy: [["2026-10-19", 103.1], ["2026-10-20", 103.28], ["2026-10-21", 103.2], ["2026-10-22", 103.55], ["2026-10-23", 103.4], ["2026-10-26", 103.8], ["2026-10-27", 104.2], ["2026-10-28", 104.05], ["2026-10-29", 104.1], ["2026-10-30", 104.3]],
@@ -577,6 +608,7 @@
 
     setText("today-date", new Date().toLocaleDateString("zh-TW"));
     fallbackToCache();
+    renderAdvanceDecline();
     if (new URLSearchParams(window.location.search).get("preview") === "mock") {
       renderMockHistoryPreview();
     } else {
