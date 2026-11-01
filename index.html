@@ -83,6 +83,7 @@
               <span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">50 以上代表製造業擴張，低於 50 代表緊縮；留意庫存與新訂單變化。</span></span>
             </div>
             <div class="flex items-end justify-between gap-2"><span id="pmi-value" class="number text-4xl font-semibold text-red-400">49.2</span><span id="pmi-status" class="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300">緊縮</span></div>
+            <p id="pmi-signal" class="mt-3 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs leading-relaxed text-slate-300" role="status">無特別提醒</p>
             <p class="mt-3 text-xs text-slate-500">景氣觀察：<span id="pmi-tip" class="text-slate-400">觀察去庫存階段</span></p>
           </article>
           <article class="panel metric p-5">
@@ -194,6 +195,7 @@
       <div class="mb-5 flex items-start justify-between border-b border-slate-700 pb-4"><div><p class="mono text-[10px] tracking-widest text-sky-400">資料設定</p><h2 class="mt-1 text-lg font-semibold">自訂備援數據</h2></div><button id="close-settings" class="rounded-md px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-800 hover:text-white" type="button" aria-label="關閉設定">×</button></div>
       <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
         <label class="text-xs text-slate-400">ISM 製造業 PMI<input name="pmi" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">前期 PMI<input name="previousPmi" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
         <label class="text-xs text-slate-400">初領失業金（人數）<input name="claims" type="number" step="1000" min="0" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
         <label class="text-xs text-slate-400">失業率（%）<input name="unemployment" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
         <label class="text-xs text-slate-400">Sahm Rule 指標<input name="sahm" type="number" step="0.01" min="0" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
@@ -222,7 +224,7 @@
     "use strict";
     const STORAGE_KEY = "personalMacroDashboard.v1";
     const DEFAULT_DATA = Object.freeze({
-      pmi: 49.2, claims: 215000, unemployment: 4.1, sahm: 0.39,
+      pmi: 49.2, previousPmi: 48.7, claims: 215000, unemployment: 4.1, sahm: 0.39,
       cpi: 3.1, cpiExpected: 3.0, coreCpi: 3.5, coreCpiExpected: 3.4,
       us10y: null, us2y: null, vix: 14.25, vixChange: -2.10,
       naaim: 92.1, naaimPrev: 88.4, bullish: 38.5, neutral: 31.2,
@@ -427,6 +429,22 @@
 
     function setText(id, value) { byId(id).textContent = value; }
 
+    function checkPmiSignal(currentPmi, previousPmi) {
+      if (!Number.isFinite(currentPmi) || !Number.isFinite(previousPmi)) {
+        return { message: "無特別提醒", tone: "neutral" };
+      }
+      if (currentPmi > 50 && previousPmi <= 50) {
+        return { message: "【買進訊號】突破 50 的關鍵復甦月份！", tone: "positive" };
+      }
+      if (currentPmi > 50 && previousPmi > 50) {
+        return { message: "【續航中】連續在 50 以上，多頭格局保持。", tone: "positive" };
+      }
+      if (currentPmi <= 50 && previousPmi > 50) {
+        return { message: "【注意】跌破 50 榮枯線，可能進入景氣放緩期。", tone: "warning" };
+      }
+      return { message: "【觀望】持續低於 50 調整期。", tone: "neutral" };
+    }
+
     function renderDashboard(data) {
       const pmi = Number(data.pmi);
       setText("pmi-value", format(pmi));
@@ -435,6 +453,9 @@
       byId("pmi-status").textContent = expanding ? "擴張" : "緊縮";
       byId("pmi-status").className = `rounded border px-2 py-1 text-xs ${expanding ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-red-500/30 bg-red-500/10 text-red-300"}`;
       setText("pmi-tip", expanding ? "留意需求與新訂單動能" : "觀察去庫存階段");
+      const pmiSignal = checkPmiSignal(pmi, Number(data.previousPmi));
+      setText("pmi-signal", pmiSignal.message);
+      byId("pmi-signal").className = `mt-3 rounded-md border px-3 py-2 text-xs leading-relaxed ${pmiSignal.tone === "positive" ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" : pmiSignal.tone === "warning" ? "border-amber-400/30 bg-amber-400/5 text-amber-300" : "border-slate-700 bg-slate-950/60 text-slate-300"}`;
       setText("claims-value", `${numberFormat.format(Number(data.claims) / 1000)}K`);
       setText("unemployment-value", `${format(data.unemployment)}%`);
       const sahmWarning = Number(data.sahm) >= 0.5;
