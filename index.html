@@ -365,35 +365,12 @@
       renderSparkline(config.container, points);
     }
 
-    function parseYahooSeries(payload) {
-      const result = payload.chart?.result?.[0];
-      const closes = result?.indicators?.quote?.[0]?.close;
-      if (!result?.timestamp || !closes) throw new Error("行情資料格式不符");
-      return result.timestamp.map((timestamp, index) => ({
-        date: new Date(timestamp * 1000).toISOString().slice(0, 10),
-        value: closes[index] == null ? Number.NaN : Number(closes[index])
-      })).filter((point) => Number.isFinite(point.value)).slice(-30);
-    }
-
-    async function fetchYahooSeries(symbol) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Yahoo Finance 回應 ${response.status}`);
-      return parseYahooSeries(await response.json());
-    }
-
-    async function fetchFredSeries(seriesId) {
-      const startDate = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
-      const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${startDate}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`FRED 回應 ${response.status}`);
-      const rows = (await response.text()).trim().split(/\r?\n/).slice(1);
-      const points = rows.map((row) => {
-        const [date, value] = row.split(",");
-        return { date, value: value?.trim() ? Number(value) : Number.NaN };
-      }).filter((point) => point.date && Number.isFinite(point.value)).slice(-30);
-      if (points.length < 2) throw new Error("FRED 可用資料不足");
-      return points;
+    async function fetchPublishedMarketData() {
+      const url = new URL("./market-data.json", window.location.href);
+      url.searchParams.set("refresh", Date.now().toString());
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`行情檔回應 ${response.status}`);
+      return response.json();
     }
 
     function restoreMarketCharts() {
@@ -509,41 +486,46 @@
       const button = byId("refresh-button");
       button.disabled = true;
       button.textContent = "更新中…";
-      setText("data-status", "正在取得近 30 個交易日行情…");
+      setText("data-status", "正在載入已發布行情…");
       try {
-        const sources = [
-          ["dxy", () => fetchYahooSeries("DX-Y.NYB")],
-          ["us10y", () => fetchFredSeries("DGS10")],
-          ["us2y", () => fetchFredSeries("DGS2")],
-          ["spx", () => fetchYahooSeries("^GSPC")],
-          ["ndx", () => fetchYahooSeries("^NDX")]
-        ];
-        const results = await Promise.allSettled(sources.map(([, load]) => load()));
+        const payload = await fetchPublishedMarketData();
+        const publishedSeries = payload.series || {};
         let updatedCount = 0;
-        results.forEach((result, index) => {
-          if (result.status !== "fulfilled" || result.value.length < 2) return;
-          const [key] = sources[index];
-          MARKET_SERIES[key] = result.value;
-          renderMarketSeries(key, result.value);
-          updatedCount += 1;
-        });
         Object.keys(MARKET_SERIES_CONFIG).forEach((key) => {
-          if (!MARKET_SERIES[key] && MARKET_SERIES_CONFIG[key].history) renderEmptyHistory(key);
+          const points = publishedSeries[key];
+          if (!Array.isArray(points) || points.length < 2) {
+            if (!MARKET_SERIES[key] && MARKET_SERIES_CONFIG[key].history) renderEmptyHistory(key);
+            return;
+          }
+          MARKET_SERIES[key] = points;
+          renderMarketSeries(key, points);
+          updatedCount += 1;
         });
         renderDashboard(dashboardData);
         if (updatedCount > 0) {
-          showTimestamp(writeCache());
-          setText("data-status", updatedCount === sources.length ? "行情來源：Yahoo Finance、FRED" : `行情部分更新：${updatedCount}/${sources.length} 項，其餘沿用快取或顯示無資料`);
+          const updatedAt = payload.generatedAt || new Date().toISOString();
+          showTimestamp(writeCache(updatedAt));
+          const providers = [...new Set(Object.values(payload.sources || {}))].join("、");
+          const generatedAt = new Date(updatedAt).toLocaleString("zh-TW", { hour12: false });
+          setText("data-status", `行情資料：${providers || "已發布資料"}，更新於 ${generatedAt}（${updatedCount}/5 項）`);
         } else if (Object.keys(MARKET_SERIES).length > 0) {
-          setText("data-status", "行情來源暫不可用，顯示上次快取資料");
+          setText("data-status", "已發布行情不完整，顯示上次快取資料");
         } else {
           Object.values(MARKET_SERIES_CONFIG).forEach((config) => {
             if (config.container) byId(config.container).innerHTML = '<p class="pt-6 text-center text-xs text-slate-500">目前沒有可用資料</p>';
           });
-          setText("data-status", "行情來源暫不可用，顯示無資料狀態");
+          setText("data-status", "目前沒有可用行情資料");
         }
       } catch {
-        setText("data-status", "行情來源暫不可用，請稍後重試");
+        if (Object.keys(MARKET_SERIES).length > 0) {
+          setText("data-status", "行情檔暫不可用，顯示上次快取資料");
+        } else {
+          Object.keys(MARKET_SERIES_CONFIG).forEach((key) => {
+            if (MARKET_SERIES_CONFIG[key].history) renderEmptyHistory(key);
+            else if (MARKET_SERIES_CONFIG[key].container) byId(MARKET_SERIES_CONFIG[key].container).innerHTML = '<p class="pt-6 text-center text-xs text-slate-500">目前沒有可用資料</p>';
+          });
+          setText("data-status", "目前沒有已發布行情，請稍後重試");
+        }
       } finally {
         button.disabled = false;
         button.textContent = "手動更新";

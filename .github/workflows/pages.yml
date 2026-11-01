@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "30 22 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -25,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Fetch daily market data
+        run: python .github/scripts/fetch_market_data.py
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
