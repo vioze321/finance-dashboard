@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#020617">
+  <title>市場情緒與總體監控</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #020617;
+      --surface: #0f172a;
+      --line: #334155;
+      --muted: #94a3b8;
+      --green: #34d399;
+      --red: #ef4444;
+      --amber: #fbbf24;
+      --blue: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .mono, .number { font-family: Monaco, Menlo, "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .panel { border: 1px solid var(--line); border-radius: .75rem; background: var(--surface); box-shadow: 0 12px 30px rgb(0 0 0 / .18); }
+    .metric { min-height: 132px; }
+    .tooltip { visibility: hidden; opacity: 0; transform: translateY(4px); transition: opacity .16s ease, transform .16s ease; }
+    .tip-trigger:hover .tooltip, .tip-trigger:focus-visible .tooltip { visibility: visible; opacity: 1; transform: translateY(0); }
+    .chart-frame { height: 92px; overflow: hidden; }
+    .chart-frame.compact { height: 72px; }
+    .chart-frame svg { display: block; width: 100%; height: 100%; }
+    .range-track { position: relative; height: 4px; margin: 11px 5px 8px; border-radius: 9999px; background: #334155; }
+    .range-marker { position: absolute; top: 50%; width: 11px; height: 11px; transform: translate(-50%, -50%); border: 2px solid #0f172a; border-radius: 50%; background: #38bdf8; }
+    .trend-pill { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border: 1px solid #334155; border-radius: 9999px; font-size: 10px; white-space: nowrap; }
+    .trend-up { border-color: rgb(52 211 153 / .35); background: rgb(52 211 153 / .08); color: #34d399; }
+    .trend-down { border-color: rgb(239 68 68 / .35); background: rgb(239 68 68 / .08); color: #ef4444; }
+    .trend-flat { color: #94a3b8; }
+    .market-table { width: 100%; min-width: 290px; border-collapse: collapse; font-size: 11px; }
+    .market-table th, .market-table td { padding: 7px 5px; border-bottom: 1px solid #1e293b; text-align: right; white-space: nowrap; }
+    .market-table th:first-child, .market-table td:first-child { text-align: left; }
+    .market-table thead { color: #64748b; }
+    .market-table-wrap { overflow-x: auto; }
+    .gauge-track { stroke: #334155; }
+    .gauge-value { fill: none; stroke-linecap: round; transition: stroke-dasharray .35s ease; }
+    dialog { color: #f8fafc; }
+    dialog::backdrop { background: rgb(2 6 23 / .78); backdrop-filter: blur(3px); }
+    input[type="number"] { color-scheme: dark; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body class="min-h-screen">
+  <main class="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
+    <header class="mb-6 flex flex-col gap-4 border-b border-slate-700 pb-5 xl:flex-row xl:items-center xl:justify-between">
+      <div>
+        <p class="mono mb-1 text-[10px] tracking-[.18em] text-sky-400">個人市場監控台 <span class="text-slate-600">/ 總體與情緒</span></p>
+        <h1 class="text-xl font-bold tracking-wide text-slate-50 sm:text-2xl">總體經濟與市場情緒儀表板</h1>
+        <p class="mt-1 text-sm text-slate-400">個人理財投資監控</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="mr-1 min-w-44 text-xs text-slate-400">
+          <span class="block">最近更新</span>
+          <span id="last-updated" class="mono mt-1 block text-slate-200">--:--:--</span>
+        </div>
+        <button id="refresh-button" class="rounded-lg border border-amber-400/70 px-4 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-400/10" type="button">手動更新</button>
+        <button id="settings-button" class="rounded-lg border border-sky-400/70 px-4 py-2 text-sm font-medium text-sky-300 transition hover:bg-sky-400/10" type="button">資料設定</button>
+      </div>
+    </header>
+
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+      <p id="data-status" role="status">行情來源：載入中</p>
+      <p class="mono">市場監控 <span class="text-slate-700">|</span> <span id="today-date">----</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-5">
+      <section aria-labelledby="macro-title">
+        <div class="mb-3 flex items-center gap-3">
+          <span class="mono text-xs text-sky-400">01</span><h2 id="macro-title" class="text-sm font-semibold tracking-wide">景氣週期與基本面</h2><span class="h-px flex-1 bg-slate-800"></span>
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <article class="panel metric p-5">
+            <div class="mb-5 flex items-start justify-between">
+              <h3 class="text-sm font-medium text-slate-300">ISM 製造業 PMI</h3>
+              <span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">50 以上代表製造業擴張，低於 50 代表緊縮；留意庫存與新訂單變化。</span></span>
+            </div>
+            <div class="flex items-end justify-between gap-2"><span id="pmi-value" class="number text-4xl font-semibold text-red-400">49.2</span><span id="pmi-status" class="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300">緊縮</span></div>
+            <p class="mt-3 text-xs text-slate-500">景氣觀察：<span id="pmi-tip" class="text-slate-400">觀察去庫存階段</span></p>
+          </article>
+          <article class="panel metric p-5">
+            <div class="mb-5 flex items-start justify-between"><h3 class="text-sm font-medium text-slate-300">勞動力市場與衰退風險</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">Sahm Rule 指標達 0.50 個百分點，通常代表失業率相對低點明顯上升，衰退風險提高。</span></span></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><p class="text-xs text-slate-500">初領失業金（週）</p><p id="claims-value" class="number mt-1 text-2xl font-semibold">215K</p></div>
+              <div><p class="text-xs text-slate-500">失業率（月）</p><p id="unemployment-value" class="number mt-1 text-2xl font-semibold">4.1%</p></div>
+            </div>
+            <div class="mt-4 flex items-center gap-2 border-t border-slate-800 pt-3"><span id="sahm-light" class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span><span class="text-xs text-slate-400">Sahm Rule</span><span id="sahm-status" class="ml-auto text-xs text-emerald-300">正常</span></div>
+          </article>
+          <article class="panel metric p-5">
+            <div class="mb-5 flex items-start justify-between"><h3 class="text-sm font-medium text-slate-300">CPI 通膨監測</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">年增率衡量物價相較去年同期變化；核心 CPI 排除食品與能源，觀察時請一併比較預期值。</span></span></div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><p class="text-xs text-slate-500">整體 CPI 年增</p><p id="cpi-value" class="number mt-1 text-2xl font-semibold">3.1%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="cpi-expected">3.0%</span></p></div>
+              <div><p class="text-xs text-slate-500">核心 CPI 年增</p><p id="core-cpi-value" class="number mt-1 text-2xl font-semibold">3.5%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="core-cpi-expected">3.4%</span></p></div>
+            </div>
+            <p class="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">資料欄位：<span class="text-slate-400">實際值 / 市場預期值</span></p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="liquidity-title">
+        <div class="mb-3 flex items-center gap-3"><span class="mono text-xs text-sky-400">02</span><h2 id="liquidity-title" class="text-sm font-semibold tracking-wide">資金與流動性</h2><span class="h-px flex-1 bg-slate-800"></span></div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <article class="panel p-4">
+            <div class="mb-3 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">美元指數 DXY</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/chart/?symbol=ICEUS%3ADXY" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟美元指數">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">美元相對一籃子主要貨幣的強弱指標；美元走強可能收緊全球金融條件。</span></span></div></div>
+            <div class="flex flex-wrap items-end justify-between gap-2"><span id="dxy-value" class="number text-3xl font-semibold text-slate-50">--</span><div class="flex flex-wrap items-center gap-2"><span id="dxy-daily" class="number text-sm text-slate-400">--</span><span id="dxy-streak" class="trend-pill">--</span></div></div>
+            <div class="mt-4"><div class="flex items-center justify-between text-[10px] text-slate-500"><span>近 10 日低點 <b id="dxy-range-low" class="number font-normal text-slate-300">--</b></span><span>高點 <b id="dxy-range-high" class="number font-normal text-slate-300">--</b></span></div><div class="range-track"><span id="dxy-range-marker" class="range-marker" style="left:50%"></span></div><p class="text-right text-[10px] text-slate-500">區間位置 <span id="dxy-range-position" class="number text-slate-300">--</span></p></div>
+            <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="dxy-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
+          </article>
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">美債殖利率</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/chart/?symbol=TVC%3AUS10Y" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟美國十年期殖利率">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">10 年期與 2 年期殖利率利差為負時，殖利率曲線倒掛，常被視為景氣風險訊號之一。</span></span></div></div>
+            <div class="mt-4 flex items-center justify-between border-t border-slate-800 pt-3"><span class="text-xs text-slate-500">10Y - 2Y 利差</span><span id="spread-value" class="number text-sm font-semibold text-sky-300">+0.21%</span></div>
+            <div class="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <section aria-label="10 年期殖利率摘要與歷史資料">
+                <div class="flex flex-wrap items-end justify-between gap-2"><div><p class="text-xs text-slate-500">10 年期 US10Y</p><p id="us10y-value" class="number mt-1 text-2xl font-semibold">--</p></div><div class="flex flex-wrap items-center gap-2"><span id="us10y-daily" class="number text-xs text-slate-400">--</span><span id="us10y-streak" class="trend-pill">--</span></div></div>
+                <div class="mt-3"><div class="flex items-center justify-between text-[10px] text-slate-500"><span>近 10 日低點 <b id="us10y-range-low" class="number font-normal text-slate-300">--</b></span><span>高點 <b id="us10y-range-high" class="number font-normal text-slate-300">--</b></span></div><div class="range-track"><span id="us10y-range-marker" class="range-marker" style="left:50%"></span></div><p class="text-right text-[10px] text-slate-500">區間位置 <span id="us10y-range-position" class="number text-slate-300">--</span></p></div>
+                <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="us10y-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
+              </section>
+              <section class="border-t border-slate-800 pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0" aria-label="2 年期殖利率摘要與歷史資料">
+                <div class="flex flex-wrap items-end justify-between gap-2"><div><p class="text-xs text-slate-500">2 年期 US2Y</p><p id="us2y-value" class="number mt-1 text-2xl font-semibold">--</p></div><div class="flex flex-wrap items-center gap-2"><span id="us2y-daily" class="number text-xs text-slate-400">--</span><span id="us2y-streak" class="trend-pill">--</span></div></div>
+                <div class="mt-3"><div class="flex items-center justify-between text-[10px] text-slate-500"><span>近 10 日低點 <b id="us2y-range-low" class="number font-normal text-slate-300">--</b></span><span>高點 <b id="us2y-range-high" class="number font-normal text-slate-300">--</b></span></div><div class="range-track"><span id="us2y-range-marker" class="range-marker" style="left:50%"></span></div><p class="text-right text-[10px] text-slate-500">區間位置 <span id="us2y-range-position" class="number text-slate-300">--</span></p></div>
+                <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="us2y-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
+              </section>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="sentiment-title">
+        <div class="mb-3 flex items-center gap-3"><span class="mono text-xs text-sky-400">03</span><h2 id="sentiment-title" class="text-sm font-semibold tracking-wide">市場情緒溫度計</h2><span class="h-px flex-1 bg-slate-800"></span></div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">VIX 恐慌指數</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">VIX 反映標普 500 選擇權隱含波動率；數值升高通常代表市場避險需求增加。</span></span></div>
+            <p id="vix-value" class="number text-4xl font-semibold text-emerald-400">14.25</p><div class="mt-3 flex items-center justify-between"><span class="text-xs text-slate-500">今日變化</span><span id="vix-change" class="number text-sm text-emerald-300">-2.10%</span></div>
+          </article>
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">NAAIM 主動投資人曝險</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">NAAIM 曝險指數追蹤主動型經理人的股票曝險；高於 90 常代表曝險偏高，並非單獨的買賣訊號。</span></span></div>
+            <div class="flex items-end gap-2"><p id="naaim-value" class="number text-4xl font-semibold text-amber-300">92.1%</p><span class="mb-1 text-xs text-slate-500">本週</span></div><p class="mt-3 text-xs text-slate-500">一週前 <span id="naaim-prev" class="number text-slate-300">88.4%</span></p>
+            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div id="naaim-bar" class="h-full rounded-full bg-amber-400" style="width:46%"></div></div>
+          </article>
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">AAII 散戶情緒調查</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">散戶看多、中性、看空比例來自每週調查；多空差可觀察情緒極端程度。</span></span></div>
+            <div class="mb-3 flex h-3 overflow-hidden rounded-sm bg-slate-800" role="img" aria-label="AAII 看多、中性、看空比例"><div id="aaii-bull-bar" class="bg-emerald-400" style="width:38.5%"></div><div id="aaii-neutral-bar" class="bg-slate-500" style="width:31.2%"></div><div id="aaii-bear-bar" class="bg-red-500" style="width:30.3%"></div></div>
+            <div class="grid grid-cols-3 gap-1 text-[11px]"><span class="text-emerald-300">看多 <b id="aaii-bull" class="number">38.5%</b></span><span class="text-slate-400">中性 <b id="aaii-neutral" class="number">31.2%</b></span><span class="text-red-400">看空 <b id="aaii-bear" class="number">30.3%</b></span></div>
+            <p class="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">多空差 <span id="aaii-spread" class="number ml-1 text-slate-200">+8.2%</span></p>
+          </article>
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">CNN 恐懼與貪婪指數</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">指數介於 0 至 100，低值偏恐懼、高值偏貪婪；此處為示例數據，需自行接入資料來源。</span></span></div>
+            <div class="flex items-baseline gap-2"><p id="fear-value" class="number text-4xl font-semibold text-emerald-400">62</p><span class="text-xs text-slate-500">/ 100</span></div><p id="fear-label" class="mt-2 text-sm text-emerald-300">貪婪</p>
+            <div class="mt-3 h-1.5 overflow-hidden rounded-sm bg-slate-800"><div id="fear-bar" class="h-full rounded-sm bg-emerald-400" style="width:62%"></div></div>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="breadth-title">
+        <div class="mb-3 flex items-center gap-3"><span class="mono text-xs text-sky-400">04</span><h2 id="breadth-title" class="text-sm font-semibold tracking-wide">市場健康度與寬度</h2><span class="h-px flex-1 bg-slate-800"></span></div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <article class="panel p-5">
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">標普 500 站上均線比例</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">成分股高於 50 日或 200 日均線的比例，用來衡量上漲是否由多數股票參與。</span></span></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 50 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-50" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="100 157"/></svg><p id="breadth-50" class="number -mt-2 text-2xl font-semibold">64%</p><p class="mt-1 text-xs text-slate-500">高於 50 日均線</p></div>
+              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 200 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-200" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="111 157"/></svg><p id="breadth-200" class="number -mt-2 text-2xl font-semibold">71%</p><p class="mt-1 text-xs text-slate-500">高於 200 日均線</p></div>
+            </div>
+            <div class="mt-4 flex justify-center gap-4 border-t border-slate-800 pt-3 text-[11px] text-slate-500"><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"></i>低於 40%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"></i>40–70%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400"></i>高於 70%</span></div>
+          </article>
+          <article class="panel p-5">
+            <div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">騰落指標（漲跌家數累積）</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">上漲家數減下跌家數的累積走勢；若指數創高但騰落線轉弱，可能代表市場廣度收斂。</span></span></div>
+            <div class="flex min-h-[174px] flex-col items-center justify-center gap-3 rounded-md border border-dashed border-slate-700 text-center"><p class="text-sm text-slate-400">目前無可用的漲跌家數歷史資料</p><a class="text-xs text-sky-300 hover:text-sky-200" href="https://www.tradingview.com/symbols/SPX/market-breadth/" target="_blank" rel="noopener noreferrer">在 TradingView 查看市場廣度 ↗</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="overview-title">
+        <div class="mb-3 flex items-center gap-3"><span class="mono text-xs text-sky-400">05</span><h2 id="overview-title" class="text-sm font-semibold tracking-wide">大盤技術面</h2><span class="h-px flex-1 bg-slate-800"></span></div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <article class="panel p-4"><div class="mb-3 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">標普 500 SPX</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/chart/?symbol=SP%3ASPX" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟標普 500">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">美國大型股基準指數；搭配市場寬度與殖利率觀察價格趨勢。</span></span></div></div><div class="flex items-end justify-between"><span id="spx-value" class="number text-2xl font-semibold text-slate-50">取得中</span><span id="spx-daily" class="number text-xs text-slate-400">--</span></div><p class="mt-1 text-[11px] text-slate-500">30 日變化 <span id="spx-30d" class="number text-slate-300">--</span></p><div id="spx-chart" class="chart-frame" role="img" aria-label="標普 500 近 30 個交易日走勢圖"></div></article>
+          <article class="panel p-4"><div class="mb-3 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">那斯達克 100 NDX</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/chart/?symbol=NASDAQ%3ANDX" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟那斯達克 100">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">大型非金融 Nasdaq 指數；科技股權重較高，對利率與成長股情緒較敏感。</span></span></div></div><div class="flex items-end justify-between"><span id="ndx-value" class="number text-2xl font-semibold text-slate-50">取得中</span><span id="ndx-daily" class="number text-xs text-slate-400">--</span></div><p class="mt-1 text-[11px] text-slate-500">30 日變化 <span id="ndx-30d" class="number text-slate-300">--</span></p><div id="ndx-chart" class="chart-frame" role="img" aria-label="那斯達克 100 近 30 個交易日走勢圖"></div></article>
+        </div>
+      </section>
+    </div>
+    <footer class="mt-7 border-t border-slate-800 pt-4 text-[11px] text-slate-600">行情圖表使用 Yahoo Finance 與 FRED 歷史收盤資料；更新頻率及最後資料日依各來源為準。投資監控用途，非投資建議。</footer>
+  </main>
+
+  <dialog id="settings-dialog" class="w-[min(94vw,760px)] rounded-xl border border-slate-700 bg-slate-900 p-0 shadow-2xl">
+    <form id="settings-form" class="p-5 sm:p-6">
+      <div class="mb-5 flex items-start justify-between border-b border-slate-700 pb-4"><div><p class="mono text-[10px] tracking-widest text-sky-400">資料設定</p><h2 class="mt-1 text-lg font-semibold">自訂備援數據</h2></div><button id="close-settings" class="rounded-md px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-800 hover:text-white" type="button" aria-label="關閉設定">×</button></div>
+      <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label class="text-xs text-slate-400">ISM 製造業 PMI<input name="pmi" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">初領失業金（人數）<input name="claims" type="number" step="1000" min="0" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">失業率（%）<input name="unemployment" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">Sahm Rule 指標<input name="sahm" type="number" step="0.01" min="0" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">整體 CPI 年增（%）<input name="cpi" type="number" step="0.1" min="-20" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">整體 CPI 預期（%）<input name="cpiExpected" type="number" step="0.1" min="-20" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">核心 CPI 年增（%）<input name="coreCpi" type="number" step="0.1" min="-20" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">核心 CPI 預期（%）<input name="coreCpiExpected" type="number" step="0.1" min="-20" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">10 年期殖利率（%）<input name="us10y" type="number" step="0.01" min="-10" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">2 年期殖利率（%）<input name="us2y" type="number" step="0.01" min="-10" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">VIX 指數<input name="vix" type="number" step="0.01" min="0" max="200" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">VIX 今日變化（%）<input name="vixChange" type="number" step="0.01" min="-100" max="1000" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">NAAIM 本週（%）<input name="naaim" type="number" step="0.1" min="-200" max="200" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">NAAIM 一週前（%）<input name="naaimPrev" type="number" step="0.1" min="-200" max="200" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">AAII 看多（%）<input name="bullish" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">AAII 中性（%）<input name="neutral" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">AAII 看空（%）<input name="bearish" type="number" step="0.1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">恐懼與貪婪指數<input name="fearGreed" type="number" step="1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">高於 50 日均線（%）<input name="above50" type="number" step="1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+        <label class="text-xs text-slate-400">高於 200 日均線（%）<input name="above200" type="number" step="1" min="0" max="100" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></label>
+      </div>
+      <div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-700 pt-4"><button id="reset-data" type="button" class="mr-auto rounded-md border border-slate-600 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">還原示例資料</button><button id="cancel-settings" type="button" class="rounded-md border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">取消</button><button type="submit" class="rounded-md border border-sky-400/70 bg-sky-400/10 px-4 py-2 text-sm text-sky-300 hover:bg-sky-400/20">儲存資料</button></div>
+    </form>
+  </dialog>
+
+  <script>
+    "use strict";
+    const STORAGE_KEY = "personalMacroDashboard.v1";
+    const DEFAULT_DATA = Object.freeze({
+      pmi: 49.2, claims: 215000, unemployment: 4.1, sahm: 0.39,
+      cpi: 3.1, cpiExpected: 3.0, coreCpi: 3.5, coreCpiExpected: 3.4,
+      us10y: null, us2y: null, vix: 14.25, vixChange: -2.10,
+      naaim: 92.1, naaimPrev: 88.4, bullish: 38.5, neutral: 31.2,
+      bearish: 30.3, fearGreed: 62, above50: 64, above200: 71
+    });
+    const numberFormat = new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 });
+    let dashboardData = { ...DEFAULT_DATA };
+    const byId = (id) => document.getElementById(id);
+    const format = (value, digits = 1) => Number(value).toLocaleString("zh-TW", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+    const MARKET_SERIES = {};
+    const MARKET_SERIES_CONFIG = {
+      dxy: { value: "dxy-value", daily: "dxy-daily", streak: "dxy-streak", range: "dxy", history: "dxy-history", decimals: 2 },
+      us10y: { value: "us10y-value", daily: "us10y-daily", streak: "us10y-streak", range: "us10y", history: "us10y-history", decimals: 2, yield: true },
+      us2y: { value: "us2y-value", daily: "us2y-daily", streak: "us2y-streak", range: "us2y", history: "us2y-history", decimals: 2, yield: true },
+      spx: { container: "spx-chart", value: "spx-value", daily: "spx-daily", change30: "spx-30d", decimals: 2 },
+      ndx: { container: "ndx-chart", value: "ndx-value", daily: "ndx-daily", change30: "ndx-30d", decimals: 2 }
+    };
+
+    const MOCK_HISTORY_FIXTURES = {
+      dxy: [["2026-10-19", 103.1], ["2026-10-20", 103.28], ["2026-10-21", 103.2], ["2026-10-22", 103.55], ["2026-10-23", 103.4], ["2026-10-26", 103.8], ["2026-10-27", 104.2], ["2026-10-28", 104.05], ["2026-10-29", 104.1], ["2026-10-30", 104.3]],
+      us10y: [["2026-10-19", 4.82], ["2026-10-20", 4.85], ["2026-10-21", 4.83], ["2026-10-22", 4.88], ["2026-10-23", 4.9], ["2026-10-26", 4.87], ["2026-10-27", 4.93], ["2026-10-28", 4.91], ["2026-10-29", 4.95], ["2026-10-30", 4.98]],
+      us2y: [["2026-10-19", 4.55], ["2026-10-20", 4.57], ["2026-10-21", 4.56], ["2026-10-22", 4.59], ["2026-10-23", 4.62], ["2026-10-26", 4.6], ["2026-10-27", 4.63], ["2026-10-28", 4.6], ["2026-10-29", 4.64], ["2026-10-30", 4.66]]
+    };
+
+    function renderHistoryTable(key, points) {
+      const config = MARKET_SERIES_CONFIG[key];
+      const rows = points.slice(-10).map((point, index) => ({ point, index: points.length - Math.min(10, points.length) + index })).reverse();
+      byId(config.history).innerHTML = rows.map(({ point, index }) => {
+        const previous = points[index - 1]?.value;
+        if (previous == null) return `<tr><td>${point.date}</td><td class="number">${format(point.value, config.decimals)}</td><td class="text-slate-500">--</td><td class="text-slate-500">--</td></tr>`;
+        const change = point.value - previous;
+        const percent = previous === 0 ? 0 : change / previous * 100;
+        const direction = change > 0 ? "多" : change < 0 ? "空" : "平";
+        const color = change > 0 ? "text-emerald-400" : change < 0 ? "text-red-500" : "text-slate-400";
+        const formattedChange = config.yield
+          ? `${change > 0 ? "+" : ""}${format(change, 2)} 個百分點`
+          : `${change > 0 ? "+" : ""}${format(change, config.decimals)} (${percent > 0 ? "+" : ""}${format(percent, 2)}%)`;
+        const marker = change > 0 ? "🟢" : change < 0 ? "🔴" : "⚪";
+        return `<tr><td>${point.date}</td><td class="number">${format(point.value, config.decimals)}${config.yield ? "%" : ""}</td><td class="number ${color}">${formattedChange}</td><td class="${color}">${marker} ${direction}</td></tr>`;
+      }).join("");
+    }
+
+    function renderHistorySummary(key, points) {
+      const config = MARKET_SERIES_CONFIG[key];
+      if (!points || points.length < 2) {
+        renderEmptyHistory(key);
+        return;
+      }
+      const latest = points.at(-1).value;
+      const previous = points.at(-2).value;
+      const change = latest - previous;
+      const percent = previous === 0 ? 0 : change / previous * 100;
+      const latestText = `${format(latest, config.decimals)}${config.yield ? "%" : ""}`;
+      const dailyText = config.yield
+        ? `${change > 0 ? "+" : ""}${format(change, 2)} 個百分點`
+        : `${change > 0 ? "+" : ""}${format(change, config.decimals)} (${percent > 0 ? "+" : ""}${format(percent, 2)}%)`;
+      const trend = Math.sign(change);
+      let streak = 0;
+      if (trend !== 0) {
+        for (let index = points.length - 1; index > 0; index -= 1) {
+          if (Math.sign(points[index].value - points[index - 1].value) !== trend) break;
+          streak += 1;
+        }
+      }
+      const recent = points.slice(-10);
+      const values = recent.map((point) => point.value);
+      const low = Math.min(...values);
+      const high = Math.max(...values);
+      const position = high === low ? 50 : Math.max(0, Math.min(100, (latest - low) / (high - low) * 100));
+      const tone = change > 0 ? "text-emerald-400" : change < 0 ? "text-red-500" : "text-slate-400";
+      setText(config.value, latestText);
+      setText(config.daily, dailyText);
+      byId(config.daily).className = `number text-xs ${tone}`;
+      byId(config.streak).textContent = trend > 0 ? `🟢 ${streak} 連漲` : trend < 0 ? `🔴 ${streak} 連跌` : "⚪ 平盤";
+      byId(config.streak).className = `trend-pill ${trend > 0 ? "trend-up" : trend < 0 ? "trend-down" : "trend-flat"}`;
+      setText(`${config.range}-range-low`, `${format(low, config.decimals)}${config.yield ? "%" : ""}`);
+      setText(`${config.range}-range-high`, `${format(high, config.decimals)}${config.yield ? "%" : ""}`);
+      setText(`${config.range}-range-position`, `${format(position, 0)}%`);
+      byId(`${config.range}-range-marker`).style.left = `${position}%`;
+      renderHistoryTable(key, points);
+    }
+
+    function renderEmptyHistory(key, message = "目前沒有可用資料") {
+      const config = MARKET_SERIES_CONFIG[key];
+      if (config.history) byId(config.history).innerHTML = `<tr><td colspan="4" class="py-5 text-center text-slate-500">${message}</td></tr>`;
+      if (config.value) setText(config.value, "--");
+      if (config.daily) setText(config.daily, "--");
+      if (config.streak) { setText(config.streak, "無資料"); byId(config.streak).className = "trend-pill trend-flat"; }
+      if (config.range) {
+        setText(`${config.range}-range-low`, "--");
+        setText(`${config.range}-range-high`, "--");
+        setText(`${config.range}-range-position`, "--");
+        byId(`${config.range}-range-marker`).style.left = "50%";
+      }
+    }
+
+    function renderSparkline(containerId, points, percentPoint = false) {
+      const width = 640;
+      const height = 92;
+      const padding = 5;
+      const values = points.map((point) => point.value);
+      const minimum = Math.min(...values);
+      const maximum = Math.max(...values);
+      const range = maximum - minimum || 1;
+      const coordinates = points.map((point, index) => ({
+        x: padding + (index / (points.length - 1)) * (width - padding * 2),
+        y: height - padding - ((point.value - minimum) / range) * (height - padding * 2),
+        point
+      }));
+      const linePoints = coordinates.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+      const color = values.at(-1) >= values[0] ? "#34d399" : "#ef4444";
+      const gradientId = `${containerId}-gradient`;
+      const areaPoints = coordinates.map(({ x, y }) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+      const fillPath = `M${coordinates[0].x.toFixed(1)},${height} ${areaPoints} L${coordinates.at(-1).x.toFixed(1)},${height} Z`;
+      const markers = coordinates.map(({ x, y, point }) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="transparent"><title>${point.date}　${numberFormat.format(point.value)}${percentPoint ? "%" : ""}</title></circle>`).join("");
+      const lastPoint = coordinates.at(-1);
+      byId(containerId).innerHTML = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".2"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${fillPath}" fill="url(#${gradientId})"/><polyline points="${linePoints}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${markers}<circle cx="${lastPoint.x.toFixed(1)}" cy="${lastPoint.y.toFixed(1)}" r="3" fill="${color}"/></svg>`;
+    }
+
+    function renderMarketSeries(key, points) {
+      const config = MARKET_SERIES_CONFIG[key];
+      if (!points || points.length < 2) return;
+      if (config.history) {
+        renderHistorySummary(key, points);
+        if (config.yield) dashboardData[key] = points.at(-1).value;
+        return;
+      }
+      const first = points[0].value;
+      const previous = points.at(-2).value;
+      const latest = points.at(-1).value;
+      const change30 = latest - first;
+      const dailyChange = latest - previous;
+      const colorClass = (change) => change >= 0 ? "text-emerald-400" : "text-red-400";
+      const dailyPercent = previous === 0 ? 0 : (latest / previous - 1) * 100;
+      const change30Percent = first === 0 ? 0 : (latest / first - 1) * 100;
+      setText(config.value, numberFormat.format(latest));
+      setText(config.daily, `${dailyPercent >= 0 ? "+" : ""}${format(dailyPercent, 2)}%`);
+      setText(config.change30, `${change30Percent >= 0 ? "+" : ""}${format(change30Percent, 2)}%`);
+      byId(config.daily).className = `number text-xs ${colorClass(dailyPercent)}`;
+      byId(config.change30).className = `number ${colorClass(change30Percent)}`;
+      renderSparkline(config.container, points);
+    }
+
+    function parseYahooSeries(payload) {
+      const result = payload.chart?.result?.[0];
+      const closes = result?.indicators?.quote?.[0]?.close;
+      if (!result?.timestamp || !closes) throw new Error("行情資料格式不符");
+      return result.timestamp.map((timestamp, index) => ({
+        date: new Date(timestamp * 1000).toISOString().slice(0, 10),
+        value: closes[index] == null ? Number.NaN : Number(closes[index])
+      })).filter((point) => Number.isFinite(point.value)).slice(-30);
+    }
+
+    async function fetchYahooSeries(symbol) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2mo&interval=1d`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Yahoo Finance 回應 ${response.status}`);
+      return parseYahooSeries(await response.json());
+    }
+
+    async function fetchFredSeries(seriesId) {
+      const startDate = new Date(Date.now() - 70 * 86400000).toISOString().slice(0, 10);
+      const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}&cosd=${startDate}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`FRED 回應 ${response.status}`);
+      const rows = (await response.text()).trim().split(/\r?\n/).slice(1);
+      const points = rows.map((row) => {
+        const [date, value] = row.split(",");
+        return { date, value: value?.trim() ? Number(value) : Number.NaN };
+      }).filter((point) => point.date && Number.isFinite(point.value)).slice(-30);
+      if (points.length < 2) throw new Error("FRED 可用資料不足");
+      return points;
+    }
+
+    function restoreMarketCharts() {
+      const cachedCharts = readCache()?.charts || {};
+      Object.keys(MARKET_SERIES_CONFIG).forEach((key) => {
+        const points = cachedCharts[key];
+        if (Array.isArray(points) && points.length >= 2) {
+          MARKET_SERIES[key] = points;
+          renderMarketSeries(key, points);
+        } else if (MARKET_SERIES_CONFIG[key].history) {
+          renderEmptyHistory(key, "等待行情資料");
+        }
+      });
+    }
+
+    function renderMockHistoryPreview() {
+      Object.entries(MOCK_HISTORY_FIXTURES).forEach(([key, rows]) => {
+        const points = rows.map(([date, value]) => ({ date, value }));
+        renderMarketSeries(key, points);
+      });
+      setText("data-status", "版型預覽：Mock Data（非行情）");
+    }
+
+    function setText(id, value) { byId(id).textContent = value; }
+
+    function renderDashboard(data) {
+      const pmi = Number(data.pmi);
+      setText("pmi-value", format(pmi));
+      const expanding = pmi >= 50;
+      byId("pmi-value").className = `number text-4xl font-semibold ${expanding ? "text-emerald-400" : "text-red-400"}`;
+      byId("pmi-status").textContent = expanding ? "擴張" : "緊縮";
+      byId("pmi-status").className = `rounded border px-2 py-1 text-xs ${expanding ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-red-500/30 bg-red-500/10 text-red-300"}`;
+      setText("pmi-tip", expanding ? "留意需求與新訂單動能" : "觀察去庫存階段");
+      setText("claims-value", `${numberFormat.format(Number(data.claims) / 1000)}K`);
+      setText("unemployment-value", `${format(data.unemployment)}%`);
+      const sahmWarning = Number(data.sahm) >= 0.5;
+      byId("sahm-light").className = `h-2.5 w-2.5 rounded-full ${sahmWarning ? "bg-red-500 shadow-[0_0_10px_#ef4444]" : "bg-emerald-400 shadow-[0_0_10px_#34d399]"}`;
+      setText("sahm-status", sahmWarning ? "衰退警示" : "正常");
+      byId("sahm-status").className = `ml-auto text-xs ${sahmWarning ? "text-red-400" : "text-emerald-300"}`;
+      setText("cpi-value", `${format(data.cpi)}%`); setText("cpi-expected", `${format(data.cpiExpected)}%`);
+      setText("core-cpi-value", `${format(data.coreCpi)}%`); setText("core-cpi-expected", `${format(data.coreCpiExpected)}%`);
+      setText("us10y-value", data.us10y != null && Number.isFinite(Number(data.us10y)) ? `${format(data.us10y, 2)}%` : "--");
+      setText("us2y-value", data.us2y != null && Number.isFinite(Number(data.us2y)) ? `${format(data.us2y, 2)}%` : "--");
+      const spread = Number(data.us10y) - Number(data.us2y);
+      setText("spread-value", data.us10y != null && data.us2y != null && Number.isFinite(spread) ? `${spread >= 0 ? "+" : ""}${format(spread, 2)}%` : "--");
+      byId("spread-value").className = `number text-sm font-semibold ${spread < 0 ? "text-red-400" : "text-sky-300"}`;
+      const vix = Number(data.vix);
+      setText("vix-value", format(vix, 2));
+      byId("vix-value").className = `number text-4xl font-semibold ${vix < 15 ? "text-emerald-400" : vix <= 25 ? "text-amber-300" : "text-red-400"}`;
+      const change = Number(data.vixChange);
+      setText("vix-change", `${change > 0 ? "+" : ""}${format(change, 2)}%`);
+      byId("vix-change").className = `number text-sm ${change > 0 ? "text-red-400" : "text-emerald-300"}`;
+      setText("naaim-value", `${format(data.naaim)}%`); setText("naaim-prev", `${format(data.naaimPrev)}%`);
+      byId("naaim-bar").style.width = `${Math.max(0, Math.min(100, Number(data.naaim) / 2))}%`;
+      const bullish = Number(data.bullish), neutral = Number(data.neutral), bearish = Number(data.bearish);
+      setText("aaii-bull", `${format(bullish)}%`); setText("aaii-neutral", `${format(neutral)}%`); setText("aaii-bear", `${format(bearish)}%`);
+      byId("aaii-bull-bar").style.width = `${bullish}%`; byId("aaii-neutral-bar").style.width = `${neutral}%`; byId("aaii-bear-bar").style.width = `${bearish}%`;
+      const sentimentSpread = bullish - bearish;
+      setText("aaii-spread", `${sentimentSpread > 0 ? "+" : ""}${format(sentimentSpread)}%`);
+      byId("aaii-spread").className = `number ml-1 ${sentimentSpread >= 0 ? "text-emerald-300" : "text-red-400"}`;
+      const fear = Number(data.fearGreed);
+      setText("fear-value", numberFormat.format(fear));
+      const fearText = fear < 25 ? "極度恐懼" : fear < 45 ? "恐懼" : fear <= 55 ? "中性" : fear <= 75 ? "貪婪" : "極度貪婪";
+      const fearTone = fear < 25 ? "text-red-400" : fear < 45 ? "text-amber-300" : fear <= 55 ? "text-slate-300" : "text-emerald-300";
+      byId("fear-value").className = `number text-4xl font-semibold ${fearTone}`;
+      byId("fear-label").className = `mt-2 text-sm ${fearTone}`; setText("fear-label", fearText);
+      byId("fear-bar").style.width = `${Math.max(0, Math.min(100, fear))}%`;
+      byId("fear-bar").className = `h-full rounded-sm ${fear < 25 ? "bg-red-500" : fear <= 55 ? "bg-amber-400" : "bg-emerald-400"}`;
+      [50, 200].forEach((period) => {
+        const value = Number(data[`above${period}`]);
+        setText(`breadth-${period}`, `${numberFormat.format(value)}%`);
+        const color = value < 40 ? "#ef4444" : value > 70 ? "#34d399" : "#fbbf24";
+        byId(`gauge-${period}`).setAttribute("stroke", color);
+        byId(`gauge-${period}`).setAttribute("stroke-dasharray", `${Math.max(0, Math.min(100, value)) * 1.57} 157`);
+      });
+    }
+
+    function readCache() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); }
+      catch { return null; }
+    }
+
+    function writeCache(updatedAt = new Date().toISOString()) {
+      try { const existing = readCache() || {}; localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, data: dashboardData, charts: MARKET_SERIES, updatedAt })); }
+      catch { setText("data-status", "瀏覽器儲存空間無法使用"); }
+      return updatedAt;
+    }
+
+    function showTimestamp(timestamp) {
+      if (!timestamp) { setText("last-updated", "--:--:--"); return; }
+      const date = new Date(timestamp);
+      setText("last-updated", Number.isNaN(date.getTime()) ? "--:--:--" : date.toLocaleString("zh-TW", { hour12: false }));
+    }
+
+    function fallbackToCache() {
+      const cache = readCache();
+      if (cache && cache.data && typeof cache.data === "object") {
+        dashboardData = { ...DEFAULT_DATA, ...cache.data };
+        if (!cache.charts?.us10y) dashboardData.us10y = null;
+        if (!cache.charts?.us2y) dashboardData.us2y = null;
+        showTimestamp(cache.updatedAt);
+        setText("data-status", "資料來源：已儲存的自訂備援數據");
+      } else {
+        dashboardData = { ...DEFAULT_DATA };
+        showTimestamp(null);
+        setText("data-status", "行情來源：載入中");
+      }
+      renderDashboard(dashboardData);
+      return Boolean(cache && cache.data);
+    }
+
+    async function fetchData() {
+      const button = byId("refresh-button");
+      button.disabled = true;
+      button.textContent = "更新中…";
+      setText("data-status", "正在取得近 30 個交易日行情…");
+      try {
+        const sources = [
+          ["dxy", () => fetchYahooSeries("DX-Y.NYB")],
+          ["us10y", () => fetchFredSeries("DGS10")],
+          ["us2y", () => fetchFredSeries("DGS2")],
+          ["spx", () => fetchYahooSeries("^GSPC")],
+          ["ndx", () => fetchYahooSeries("^NDX")]
+        ];
+        const results = await Promise.allSettled(sources.map(([, load]) => load()));
+        let updatedCount = 0;
+        results.forEach((result, index) => {
+          if (result.status !== "fulfilled" || result.value.length < 2) return;
+          const [key] = sources[index];
+          MARKET_SERIES[key] = result.value;
+          renderMarketSeries(key, result.value);
+          updatedCount += 1;
+        });
+        Object.keys(MARKET_SERIES_CONFIG).forEach((key) => {
+          if (!MARKET_SERIES[key] && MARKET_SERIES_CONFIG[key].history) renderEmptyHistory(key);
+        });
+        renderDashboard(dashboardData);
+        if (updatedCount > 0) {
+          showTimestamp(writeCache());
+          setText("data-status", updatedCount === sources.length ? "行情來源：Yahoo Finance、FRED" : `行情部分更新：${updatedCount}/${sources.length} 項，其餘沿用快取或顯示無資料`);
+        } else if (Object.keys(MARKET_SERIES).length > 0) {
+          setText("data-status", "行情來源暫不可用，顯示上次快取資料");
+        } else {
+          Object.values(MARKET_SERIES_CONFIG).forEach((config) => {
+            if (config.container) byId(config.container).innerHTML = '<p class="pt-6 text-center text-xs text-slate-500">目前沒有可用資料</p>';
+          });
+          setText("data-status", "行情來源暫不可用，顯示無資料狀態");
+        }
+      } catch {
+        setText("data-status", "行情來源暫不可用，請稍後重試");
+      } finally {
+        button.disabled = false;
+        button.textContent = "手動更新";
+      }
+    }
+
+    function openSettings() {
+      const form = byId("settings-form");
+      Object.entries(dashboardData).forEach(([key, value]) => {
+        const input = form.elements.namedItem(key);
+        if (input) input.value = value ?? "";
+      });
+      byId("settings-dialog").showModal();
+    }
+
+    byId("settings-button").addEventListener("click", openSettings);
+    byId("close-settings").addEventListener("click", () => byId("settings-dialog").close());
+    byId("cancel-settings").addEventListener("click", () => byId("settings-dialog").close());
+    byId("settings-dialog").addEventListener("click", (event) => {
+      if (event.target === byId("settings-dialog")) byId("settings-dialog").close();
+    });
+    byId("settings-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget);
+      const updatedData = { ...DEFAULT_DATA };
+      for (const [key, value] of formData.entries()) {
+        if (!String(value).trim()) continue;
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) updatedData[key] = parsed;
+      }
+      if (updatedData.bullish + updatedData.neutral + updatedData.bearish > 100.5) {
+        setText("data-status", "AAII 三項比例合計不可超過 100%");
+        return;
+      }
+      dashboardData = updatedData;
+      renderDashboard(dashboardData);
+      showTimestamp(writeCache());
+      setText("data-status", "資料來源：已儲存的自訂備援數據");
+      byId("settings-dialog").close();
+    });
+    byId("reset-data").addEventListener("click", () => {
+      dashboardData = { ...DEFAULT_DATA };
+      renderDashboard(dashboardData);
+      showTimestamp(writeCache());
+      setText("data-status", "已還原可自訂的備援資料");
+      openSettings();
+    });
+    byId("refresh-button").addEventListener("click", fetchData);
+
+    setText("today-date", new Date().toLocaleDateString("zh-TW"));
+    fallbackToCache();
+    if (new URLSearchParams(window.location.search).get("preview") === "mock") {
+      renderMockHistoryPreview();
+    } else {
+      restoreMarketCharts();
+      fetchData();
+    }
+  </script>
+</body>
+</html>
