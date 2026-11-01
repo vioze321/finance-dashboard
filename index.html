@@ -34,6 +34,8 @@
     .trend-up { border-color: rgb(52 211 153 / .35); background: rgb(52 211 153 / .08); color: #34d399; }
     .trend-down { border-color: rgb(239 68 68 / .35); background: rgb(239 68 68 / .08); color: #ef4444; }
     .trend-flat { color: #94a3b8; }
+    .tv-link { display: inline-flex; align-items: center; flex: none; border: 1px solid #334155; border-radius: 5px; padding: 2px 6px; color: #38bdf8; font-size: 10px; line-height: 1.4; white-space: nowrap; }
+    .tv-link:hover { border-color: #38bdf8; color: #7dd3fc; }
     .market-table { width: 100%; min-width: 290px; border-collapse: collapse; font-size: 11px; }
     .market-table th, .market-table td { padding: 7px 5px; border-bottom: 1px solid #1e293b; text-align: right; white-space: nowrap; }
     .market-table th:first-child, .market-table td:first-child { text-align: left; }
@@ -78,27 +80,27 @@
         </div>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <article class="panel metric p-5">
-            <div class="mb-5 flex items-start justify-between">
+            <div class="mb-5 flex items-start justify-between gap-2">
               <h3 class="text-sm font-medium text-slate-300">ISM 製造業 PMI</h3>
-              <span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">50 以上代表製造業擴張，低於 50 代表緊縮；留意庫存與新訂單變化。</span></span>
+              <div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/scripts/search/ism%20manufacturing%20pmi/" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看 ISM 製造業 PMI 指標搜尋結果">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 items-center place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">50 以上代表製造業擴張，低於 50 代表緊縮；留意庫存與新訂單變化。</span></span></div>
             </div>
             <div class="flex items-end justify-between gap-2"><span id="pmi-value" class="number text-4xl font-semibold text-red-400">49.2</span><span id="pmi-status" class="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-300">緊縮</span></div>
             <p id="pmi-signal" class="mt-3 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs leading-relaxed text-slate-300" role="status">無特別提醒</p>
             <p class="mt-3 text-xs text-slate-500">景氣觀察：<span id="pmi-tip" class="text-slate-400">觀察去庫存階段</span></p>
           </article>
           <article class="panel metric p-5">
-            <div class="mb-5 flex items-start justify-between"><h3 class="text-sm font-medium text-slate-300">勞動力市場與衰退風險</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">Sahm Rule 指標達 0.50 個百分點，通常代表失業率相對低點明顯上升，衰退風險提高。</span></span></div>
+            <div class="mb-5 flex items-start justify-between gap-2"><h3 class="text-sm font-medium text-slate-300">勞動力市場與衰退風險</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/markets/world-economy/countries/united-states/" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看美國勞動力市場指標">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">Sahm Rule 指標達 0.50 個百分點，通常代表失業率相對低點明顯上升，衰退風險提高。</span></span></div></div>
             <div class="grid grid-cols-2 gap-3">
-              <div><p class="text-xs text-slate-500">初領失業金（週）</p><p id="claims-value" class="number mt-1 text-2xl font-semibold">215K</p></div>
-              <div><p class="text-xs text-slate-500">失業率（月）</p><p id="unemployment-value" class="number mt-1 text-2xl font-semibold">4.1%</p></div>
+              <div><p class="flex items-center justify-between gap-1 text-xs text-slate-500">初領失業金（週）<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=FRED%3AICSA" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看初領失業金">TV ↗</a></p><p id="claims-value" class="number mt-1 text-2xl font-semibold">215K</p></div>
+              <div><p class="flex items-center justify-between gap-1 text-xs text-slate-500">失業率（月）<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=FRED%3AUNRATE" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看失業率">TV ↗</a></p><p id="unemployment-value" class="number mt-1 text-2xl font-semibold">4.1%</p></div>
             </div>
-            <div class="mt-4 flex items-center gap-2 border-t border-slate-800 pt-3"><span id="sahm-light" class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span><span class="text-xs text-slate-400">Sahm Rule</span><span id="sahm-status" class="ml-auto text-xs text-emerald-300">正常</span></div>
+            <div class="mt-4 flex items-center gap-2 border-t border-slate-800 pt-3"><span id="sahm-light" class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span><span class="text-xs text-slate-400">Sahm Rule</span><a class="tv-link" href="https://www.tradingview.com/chart/?symbol=FRED%3ASAHMREALTIME" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看 Sahm Rule 指標">TV ↗</a><span id="sahm-status" class="ml-auto text-xs text-emerald-300">正常</span></div>
           </article>
           <article class="panel metric p-5">
             <div class="mb-5 flex items-start justify-between"><h3 class="text-sm font-medium text-slate-300">CPI 通膨監測</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">年增率衡量物價相較去年同期變化；核心 CPI 排除食品與能源，觀察時請一併比較預期值。</span></span></div>
             <div class="grid grid-cols-2 gap-3">
-              <div><p class="text-xs text-slate-500">整體 CPI 年增</p><p id="cpi-value" class="number mt-1 text-2xl font-semibold">3.1%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="cpi-expected">3.0%</span></p></div>
-              <div><p class="text-xs text-slate-500">核心 CPI 年增</p><p id="core-cpi-value" class="number mt-1 text-2xl font-semibold">3.5%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="core-cpi-expected">3.4%</span></p></div>
+              <div><p class="flex items-center justify-between gap-1 text-xs text-slate-500">整體 CPI 年增<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=ECONOMICS%3AUSIRYY" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看美國整體通膨年增率">TV ↗</a></p><p id="cpi-value" class="number mt-1 text-2xl font-semibold">3.1%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="cpi-expected">3.0%</span></p></div>
+              <div><p class="flex items-center justify-between gap-1 text-xs text-slate-500">核心 CPI 年增<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=ECONOMICS%3AUSCIR" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看美國核心通膨年增率">TV ↗</a></p><p id="core-cpi-value" class="number mt-1 text-2xl font-semibold">3.5%</p><p class="mt-1 text-[11px] text-slate-500">預期 <span id="core-cpi-expected">3.4%</span></p></div>
             </div>
             <p class="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">資料欄位：<span class="text-slate-400">實際值 / 市場預期值</span></p>
           </article>
@@ -115,7 +117,7 @@
             <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="dxy-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
           </article>
           <article class="panel p-5">
-            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">美債殖利率</h3><div class="flex items-center gap-2"><a class="rounded border border-slate-700 px-2 py-1 text-[10px] text-sky-300 hover:border-sky-400" href="https://www.tradingview.com/chart/?symbol=TVC%3AUS10Y" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟美國十年期殖利率">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">10 年期與 2 年期殖利率利差為負時，殖利率曲線倒掛，常被視為景氣風險訊號之一。</span></span></div></div>
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">美債殖利率</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/chart/?symbol=TVC%3AUS10Y" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 開啟美國十年期殖利率">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">10 年期與 2 年期殖利率利差為負時，殖利率曲線倒掛，常被視為景氣風險訊號之一。</span></span></div></div>
             <div class="mt-4 flex items-center justify-between border-t border-slate-800 pt-3"><span class="text-xs text-slate-500">10Y - 2Y 利差</span><span id="spread-value" class="number text-sm font-semibold text-sky-300">+0.21%</span></div>
             <div class="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-2">
               <section aria-label="10 年期殖利率摘要與歷史資料">
@@ -124,7 +126,7 @@
                 <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="us10y-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
               </section>
               <section class="border-t border-slate-800 pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0" aria-label="2 年期殖利率摘要與歷史資料">
-                <div class="flex flex-wrap items-end justify-between gap-2"><div><p class="text-xs text-slate-500">2 年期 US2Y</p><p id="us2y-value" class="number mt-1 text-2xl font-semibold">--</p></div><div class="flex flex-wrap items-center gap-2"><span id="us2y-daily" class="number text-xs text-slate-400">--</span><span id="us2y-streak" class="trend-pill">--</span></div></div>
+                <div class="flex flex-wrap items-end justify-between gap-2"><div><p class="flex items-center gap-2 text-xs text-slate-500">2 年期 US2Y<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=TVC%3AUS02Y" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看美國兩年期殖利率">TV ↗</a></p><p id="us2y-value" class="number mt-1 text-2xl font-semibold">--</p></div><div class="flex flex-wrap items-center gap-2"><span id="us2y-daily" class="number text-xs text-slate-400">--</span><span id="us2y-streak" class="trend-pill">--</span></div></div>
                 <div class="mt-3"><div class="flex items-center justify-between text-[10px] text-slate-500"><span>近 10 日低點 <b id="us2y-range-low" class="number font-normal text-slate-300">--</b></span><span>高點 <b id="us2y-range-high" class="number font-normal text-slate-300">--</b></span></div><div class="range-track"><span id="us2y-range-marker" class="range-marker" style="left:50%"></span></div><p class="text-right text-[10px] text-slate-500">區間位置 <span id="us2y-range-position" class="number text-slate-300">--</span></p></div>
                 <div class="market-table-wrap mt-3"><table class="market-table"><thead><tr><th>日期</th><th>收盤值</th><th>日變動</th><th>多空</th></tr></thead><tbody id="us2y-history"><tr><td colspan="4" class="text-center text-slate-500">正在載入</td></tr></tbody></table></div>
               </section>
@@ -137,22 +139,22 @@
         <div class="mb-3 flex items-center gap-3"><span class="mono text-xs text-sky-400">03</span><h2 id="sentiment-title" class="text-sm font-semibold tracking-wide">市場情緒溫度計</h2><span class="h-px flex-1 bg-slate-800"></span></div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <article class="panel p-5">
-            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">VIX 恐慌指數</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">VIX 反映標普 500 選擇權隱含波動率；數值升高通常代表市場避險需求增加。</span></span></div>
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">VIX 恐慌指數</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/chart/?symbol=CBOE%3AVIX" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看 VIX">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-52 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">VIX 反映標普 500 選擇權隱含波動率；數值升高通常代表市場避險需求增加。</span></span></div></div>
             <p id="vix-value" class="number text-4xl font-semibold text-emerald-400">14.25</p><div class="mt-3 flex items-center justify-between"><span class="text-xs text-slate-500">今日變化</span><span id="vix-change" class="number text-sm text-emerald-300">-2.10%</span></div>
           </article>
           <article class="panel p-5">
-            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">NAAIM 主動投資人曝險</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">NAAIM 曝險指數追蹤主動型經理人的股票曝險；高於 90 常代表曝險偏高，並非單獨的買賣訊號。</span></span></div>
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">NAAIM 主動投資人曝險</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/search/?query=NAAIM%20Exposure%20Index" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 搜尋 NAAIM Exposure Index">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">NAAIM 曝險指數追蹤主動型經理人的股票曝險；高於 90 常代表曝險偏高，並非單獨的買賣訊號。</span></span></div></div>
             <div class="flex items-end gap-2"><p id="naaim-value" class="number text-4xl font-semibold text-amber-300">92.1%</p><span class="mb-1 text-xs text-slate-500">本週</span></div><p class="mt-3 text-xs text-slate-500">一週前 <span id="naaim-prev" class="number text-slate-300">88.4%</span></p>
             <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div id="naaim-bar" class="h-full rounded-full bg-amber-400" style="width:46%"></div></div>
           </article>
           <article class="panel p-5">
-            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">AAII 散戶情緒調查</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">散戶看多、中性、看空比例來自每週調查；多空差可觀察情緒極端程度。</span></span></div>
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">AAII 散戶情緒調查</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/search/?query=AAII%20Sentiment%20Survey" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 搜尋 AAII Sentiment Survey">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">散戶看多、中性、看空比例來自每週調查；多空差可觀察情緒極端程度。</span></span></div></div>
             <div class="mb-3 flex h-3 overflow-hidden rounded-sm bg-slate-800" role="img" aria-label="AAII 看多、中性、看空比例"><div id="aaii-bull-bar" class="bg-emerald-400" style="width:38.5%"></div><div id="aaii-neutral-bar" class="bg-slate-500" style="width:31.2%"></div><div id="aaii-bear-bar" class="bg-red-500" style="width:30.3%"></div></div>
             <div class="grid grid-cols-3 gap-1 text-[11px]"><span class="text-emerald-300">看多 <b id="aaii-bull" class="number">38.5%</b></span><span class="text-slate-400">中性 <b id="aaii-neutral" class="number">31.2%</b></span><span class="text-red-400">看空 <b id="aaii-bear" class="number">30.3%</b></span></div>
             <p class="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">多空差 <span id="aaii-spread" class="number ml-1 text-slate-200">+8.2%</span></p>
           </article>
           <article class="panel p-5">
-            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">CNN 恐懼與貪婪指數</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">指數介於 0 至 100，低值偏恐懼、高值偏貪婪；此處為示例數據，需自行接入資料來源。</span></span></div>
+            <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">CNN 恐懼與貪婪指數</h3><div class="flex items-center gap-2"><a class="tv-link" href="https://www.tradingview.com/search/?query=CNN%20Fear%20and%20Greed%20Index" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 搜尋 CNN Fear and Greed Index">TV ↗</a><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">指數介於 0 至 100，低值偏恐懼、高值偏貪婪；此處為示例數據，需自行接入資料來源。</span></span></div></div>
             <div class="flex items-baseline gap-2"><p id="fear-value" class="number text-4xl font-semibold text-emerald-400">62</p><span class="text-xs text-slate-500">/ 100</span></div><p id="fear-label" class="mt-2 text-sm text-emerald-300">貪婪</p>
             <div class="mt-3 h-1.5 overflow-hidden rounded-sm bg-slate-800"><div id="fear-bar" class="h-full rounded-sm bg-emerald-400" style="width:62%"></div></div>
           </article>
@@ -165,8 +167,8 @@
           <article class="panel p-5">
             <div class="mb-4 flex items-center justify-between"><h3 class="text-sm font-medium text-slate-300">標普 500 站上均線比例</h3><span class="tip-trigger relative inline-flex" tabindex="0"><span class="grid h-5 w-5 place-items-center rounded-full border border-slate-600 text-[11px] text-slate-400">i</span><span class="tooltip absolute right-0 top-7 z-20 w-56 rounded-md border border-slate-600 bg-slate-950 p-3 text-xs leading-relaxed text-slate-300 shadow-xl">成分股高於 50 日或 200 日均線的比例，用來衡量上漲是否由多數股票參與。</span></span></div>
             <div class="grid grid-cols-2 gap-4">
-              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 50 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-50" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="100 157"/></svg><p id="breadth-50" class="number -mt-2 text-2xl font-semibold">64%</p><p class="mt-1 text-xs text-slate-500">高於 50 日均線</p></div>
-              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 200 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-200" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="111 157"/></svg><p id="breadth-200" class="number -mt-2 text-2xl font-semibold">71%</p><p class="mt-1 text-xs text-slate-500">高於 200 日均線</p></div>
+              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 50 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-50" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="100 157"/></svg><p id="breadth-50" class="number -mt-2 text-2xl font-semibold">64%</p><p class="mt-1 flex items-center justify-center gap-2 text-xs text-slate-500">高於 50 日均線<a class="tv-link" href="https://www.tradingview.com/symbols/SPX/market-breadth/" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看高於 50 日均線比例">TV ↗</a></p></div>
+              <div class="text-center"><svg class="mx-auto h-24 w-40 max-w-full" viewBox="0 0 120 75" role="img" aria-label="高於 200 日均線比例"><path class="gauge-track" d="M10 68 A50 50 0 0 1 110 68" fill="none" stroke-width="9"/><path id="gauge-200" class="gauge-value" d="M10 68 A50 50 0 0 1 110 68" stroke="#34d399" stroke-width="9" stroke-dasharray="111 157"/></svg><p id="breadth-200" class="number -mt-2 text-2xl font-semibold">71%</p><p class="mt-1 flex items-center justify-center gap-2 text-xs text-slate-500">高於 200 日均線<a class="tv-link" href="https://www.tradingview.com/symbols/SPX/market-breadth/" target="_blank" rel="noopener noreferrer" aria-label="在 TradingView 查看高於 200 日均線比例">TV ↗</a></p></div>
             </div>
             <div class="mt-4 flex justify-center gap-4 border-t border-slate-800 pt-3 text-[11px] text-slate-500"><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"></i>低於 40%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"></i>40–70%</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400"></i>高於 70%</span></div>
           </article>
@@ -271,6 +273,19 @@
         const tone = net > 0 ? "text-emerald-400" : net < 0 ? "text-red-500" : "text-slate-400";
         return `<tr><td>${day.date}</td><td class="number">${numberFormat.format(day.advancing)}</td><td class="number">${numberFormat.format(day.declining)}</td><td class="number ${tone}">${net > 0 ? "+" : ""}${numberFormat.format(net)}</td></tr>`;
       }).join("");
+    }
+
+    function normalizeTradingViewSearchLinks() {
+      const routes = {
+        "NAAIM Exposure Index": "naaim",
+        "AAII Sentiment Survey": "aaii",
+        "CNN Fear and Greed Index": "fear%20greed"
+      };
+      document.querySelectorAll('a[href*="tradingview.com/search/?query="]').forEach((link) => {
+        const query = new URL(link.href).searchParams.get("query");
+        const route = routes[query];
+        if (route) link.href = `https://www.tradingview.com/scripts/search/${route}/`;
+      });
     }
 
     const MOCK_HISTORY_FIXTURES = {
@@ -628,6 +643,7 @@
     byId("refresh-button").addEventListener("click", fetchData);
 
     setText("today-date", new Date().toLocaleDateString("zh-TW"));
+    normalizeTradingViewSearchLinks();
     fallbackToCache();
     renderAdvanceDecline();
     if (new URLSearchParams(window.location.search).get("preview") === "mock") {
